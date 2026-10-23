@@ -3,21 +3,15 @@
 
 """Discover and download files from an HTTP directory listing."""
 
-import base64
 import hashlib
 from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
 import tempfile
-import urllib.error
 import urllib.parse
-import urllib.request
 
-
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        raise ValueError("Remote redirects are not accepted")
+import requests
 
 
 class Links(HTMLParser):
@@ -90,11 +84,11 @@ def _safe_target(destination, relative):
 
 
 class WebDirectory:
-    def __init__(self, url, username='', password=''):
+    def __init__(self, url, username='', password='', request_session=None):
         self.url = _validate_url(url, directory=True)
-        self.username = username or ''
-        self.password = password or ''
-        self.opener = urllib.request.build_opener(NoRedirect())
+        self.request_session = request_session or requests.Session()
+        if username or password:
+            self.request_session.auth = (username or '', password or '')
 
     def request(self, url, method='GET', headers=None):
         url = _validate_url(url)
@@ -105,21 +99,26 @@ class WebDirectory:
         root_prefix = root_path if root_path.endswith('/') else root_path + '/'
         if url_path != root_path and not url_path.startswith(root_prefix):
             raise ValueError("Remote URL escaped the web scanner root")
-        request_headers = dict(headers or {})
-        if self.username or self.password:
-            token = base64.b64encode(
-                '{}:{}'.format(self.username, self.password).encode('utf-8')
-            ).decode('ascii')
-            request_headers['Authorization'] = 'Basic {}'.format(token)
-        request = urllib.request.Request(url, headers=request_headers, method=method)
-        return self.opener.open(request, timeout=60)
+        response = self.request_session.request(
+            method,
+            url,
+            headers=dict(headers or {}),
+            timeout=60,
+            allow_redirects=False,
+            stream=True,
+        )
+        if 300 <= response.status_code < 400 and response.status_code != 304:
+            response.close()
+            raise ValueError("Remote redirects are not accepted")
+        response.raise_for_status()
+        return response
 
     def listing(self, url):
         url = _validate_url(url, directory=True)
         with self.request(url) as response:
             parser = Links()
-            encoding = response.headers.get_content_charset() or 'utf-8'
-            parser.feed(response.read().decode(encoding, errors='replace'))
+            encoding = response.encoding or 'utf-8'
+            parser.feed(response.content.decode(encoding, errors='replace'))
 
         children = set()
         for href in parser.hrefs:
@@ -166,17 +165,8 @@ class WebDirectory:
             if previous_metadata.get('last_modified'):
                 headers['If-Modified-Since'] = previous_metadata['last_modified']
 
-        try:
-            response = self.request(url, headers=headers)
-        except urllib.error.HTTPError as error:
-            if error.code == 304:
-                error.close()
-                if target.is_file():
-                    return False, previous_metadata
-                raise RuntimeError("Remote server returned 304 for a missing local file")
-            raise
-
-        if response.getcode() == 304:
+        response = self.request(url, headers=headers)
+        if response.status_code == 304:
             response.close()
             if target.is_file():
                 return False, previous_metadata
@@ -188,9 +178,10 @@ class WebDirectory:
         try:
             with tempfile.NamedTemporaryFile(dir=str(target.parent), prefix='.unmanic-web-', delete=False) as temporary:
                 temporary_path = Path(temporary.name)
-                for chunk in iter(lambda: response.read(1024 * 1024), b''):
-                    temporary.write(chunk)
-                    digest.update(chunk)
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        temporary.write(chunk)
+                        digest.update(chunk)
             metadata = {
                 'etag': response.headers.get('ETag', ''),
                 'last_modified': response.headers.get('Last-Modified', ''),
@@ -246,9 +237,14 @@ def _save_state(path, url, files):
             temporary_path.unlink()
 
 
-def acquire(url, destination, state_path, username='', password=''):
+def acquire(url, destination, state_path, username='', password='', request_session=None):
     """Download remote files into a local library and return the changed count."""
-    remote = WebDirectory(url, username=username, password=password)
+    remote = WebDirectory(
+        url,
+        username=username,
+        password=password,
+        request_session=request_session,
+    )
     previous_files = _load_state(state_path, remote.url)
     current_files = {}
     changed_count = 0

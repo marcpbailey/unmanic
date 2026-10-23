@@ -973,6 +973,11 @@ class ApiSettingsHandler(BaseApiHandler):
                     "web_url":            '',
                     "web_username":       '',
                     "web_password_set":   False,
+                    "web_connection_id":  '',
+                    "web_write_url":      '',
+                    "web_write_username": '',
+                    "web_write_password_set": False,
+                    "web_write_credentials_same_as_read": True,
                     "priority_score":     0,
                 },
                 "plugins":        {

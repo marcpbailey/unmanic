@@ -34,6 +34,11 @@ def test_library_settings_response_hides_password_and_keeps_scanner_flags():
         web_url='https://media.example/library/',
         web_username='scanner',
         web_password='secret',
+        web_connection_id='5aaec515-53b1-4e7b-8448-12f2976e8c98',
+        web_write_url='https://dav.example/output/',
+        web_write_username='writer',
+        web_write_password='write-secret',
+        web_write_credentials_same_as_read=False,
         priority_score=0,
         tags=[],
     )
@@ -43,8 +48,13 @@ def test_library_settings_response_hides_password_and_keeps_scanner_flags():
     assert serialized['enable_inotify'] is True
     assert serialized['enable_web_scanner'] is True
     assert serialized['web_password_set'] is True
+    assert serialized['web_connection_id'] == '5aaec515-53b1-4e7b-8448-12f2976e8c98'
+    assert serialized['web_write_password_set'] is True
+    assert serialized['web_write_credentials_same_as_read'] is False
     assert 'web_password' not in serialized
+    assert 'web_write_password' not in serialized
     assert 'secret' not in json.dumps(serialized)
+    assert 'write-secret' not in json.dumps(serialized)
 
 
 def test_library_settings_save_preserves_or_clears_password_explicitly(monkeypatch):
@@ -52,7 +62,8 @@ def test_library_settings_save_preserves_or_clears_password_explicitly(monkeypat
         name='Source', path='/library/source', locked=False,
         enable_remote_only=False, enable_scanner=False, enable_inotify=True,
         enable_web_scanner=False, web_url='', web_username='', web_password='saved',
-        priority_score=0, tags=[],
+        web_write_url='', web_write_username='', web_write_password='write-saved',
+        web_write_credentials_same_as_read=True, priority_score=0, tags=[],
     )
     monkeypatch.setattr(settings, 'Library', lambda _library_id: library)
 
@@ -62,6 +73,8 @@ def test_library_settings_save_preserves_or_clears_password_explicitly(monkeypat
 
     settings.save_library_config(4, {'clear_web_password': True}, {})
     assert library.values['web_password'] == ''
+    settings.save_library_config(4, {'clear_web_write_password': True}, {})
+    assert library.values['web_write_password'] == ''
 
 
 def test_library_export_does_not_include_web_password(monkeypatch):
@@ -70,6 +83,9 @@ def test_library_export_does_not_include_web_password(monkeypatch):
         enable_remote_only=False, enable_scanner=False, enable_inotify=True,
         enable_web_scanner=True, web_url='https://media.example/library/',
         web_username='scanner', web_password='secret', tags=[],
+        web_connection_id='5aaec515-53b1-4e7b-8448-12f2976e8c98',
+        web_write_url='https://dav.example/output/', web_write_username='writer',
+        web_write_password='write-secret', web_write_credentials_same_as_read=False,
     )
     library.get_enabled_plugins = lambda include_settings=False: []
 
@@ -84,4 +100,7 @@ def test_library_export_does_not_include_web_password(monkeypatch):
     result = export(4)
 
     assert 'web_password' not in result['library_config']
+    assert 'web_write_password' not in result['library_config']
+    assert 'web_connection_id' not in result['library_config']
     assert 'secret' not in json.dumps(result)
+    assert 'write-secret' not in json.dumps(result)

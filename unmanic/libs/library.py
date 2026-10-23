@@ -30,11 +30,16 @@
 
 """
 import random
+import threading
+import uuid
 
 from unmanic.config import Config
 from unmanic.libs import common
 from unmanic.libs.frontend_push_messages import FrontendPushMessages
 from unmanic.libs.unmodels import EnabledPlugins, Libraries, LibraryPluginFlow, Plugins, Tags, Tasks
+
+
+_web_connection_id_lock = threading.Lock()
 
 
 def generate_random_library_name():
@@ -234,6 +239,9 @@ class Library(object):
                 'enable_web_scanner': library_config.get_enable_web_scanner(),
                 'web_url':            library_config.get_web_url(),
                 'web_username':       library_config.get_web_username(),
+                'web_write_url':      library_config.get_web_write_url(),
+                'web_write_username': library_config.get_web_write_username(),
+                'web_write_credentials_same_as_read': library_config.get_web_write_credentials_same_as_read(),
                 'tags':               library_config.get_tags(),
             },
         }
@@ -336,6 +344,38 @@ class Library(object):
 
     def set_web_password(self, value):
         self.model.web_password = value
+
+    def get_web_write_url(self):
+        return self.model.web_write_url
+
+    def set_web_write_url(self, value):
+        self.model.web_write_url = value
+
+    def get_web_write_username(self):
+        return self.model.web_write_username
+
+    def set_web_write_username(self, value):
+        self.model.web_write_username = value
+
+    def get_web_write_password(self):
+        return self.model.web_write_password
+
+    def set_web_write_password(self, value):
+        self.model.web_write_password = value
+
+    def get_web_write_credentials_same_as_read(self):
+        return self.model.web_write_credentials_same_as_read
+
+    def set_web_write_credentials_same_as_read(self, value):
+        self.model.web_write_credentials_same_as_read = value
+
+    def get_web_connection_id(self):
+        if not self.model.web_connection_id:
+            with _web_connection_id_lock:
+                if not self.model.web_connection_id:
+                    self.model.web_connection_id = str(uuid.uuid4())
+                    self.model.save(only=[Libraries.web_connection_id])
+        return self.model.web_connection_id
 
     def get_priority_score(self):
         return self.model.priority_score

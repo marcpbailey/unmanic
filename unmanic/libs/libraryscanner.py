@@ -344,12 +344,13 @@ class LibraryScannerManager(threading.Thread):
             'web_scanner',
             '{}.json'.format(library.get_id()),
         )
+        from unmanic.libs.session import Session
+        connections = Session().open_library_web_connections(library)
         changed_count = webscanner.acquire(
-            library.get_web_url(),
+            connections["read"]["url"],
             library.get_path(),
             state_path,
-            username=library.get_web_username(),
-            password=library.get_web_password(),
+            request_session=connections["read"]["session"],
         )
         self.logger.info(
             "Web scan downloaded %s changed files for library '%s'",

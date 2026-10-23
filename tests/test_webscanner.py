@@ -1,4 +1,3 @@
-from email.message import Message
 from pathlib import Path
 
 import pytest
@@ -28,50 +27,84 @@ def test_relative_path_rejects_encoded_escape():
 
 
 def test_request_uses_basic_auth_for_the_configured_origin():
+    captured = {}
+
+    class Response:
+        status_code = 200
+        headers = {}
+
+        def raise_for_status(self):
+            pass
+
+        def close(self):
+            pass
+
+    class FakeSession:
+        auth = None
+
+        def request(self, method, url, **kwargs):
+            captured.update(method=method, url=url, **kwargs)
+            return Response()
+
+    request_session = FakeSession()
     remote = webscanner.WebDirectory(
         'https://media.example/library/',
         username='user',
         password='pass',
+        request_session=request_session,
     )
-    captured = {}
-
-    class FakeOpener:
-        def open(self, request, timeout):
-            captured['request'] = request
-            captured['timeout'] = timeout
-            return object()
-
-    remote.opener = FakeOpener()
     remote.request('https://media.example/library/video.mkv')
 
-    assert captured['request'].get_header('Authorization') == 'Basic dXNlcjpwYXNz'
+    assert request_session.auth == ('user', 'pass')
+    assert captured['method'] == 'GET'
+    assert captured['url'] == 'https://media.example/library/video.mkv'
     assert captured['timeout'] == 60
+    assert captured['allow_redirects'] is False
 
 
 def test_request_rejects_another_origin_before_sending_credentials():
+    opened = []
+
+    class FakeSession:
+        def request(self, method, url, **kwargs):
+            opened.append(url)
+
     remote = webscanner.WebDirectory(
         'https://media.example/library/',
         username='user',
         password='pass',
+        request_session=FakeSession(),
     )
-    opened = []
-
-    class FakeOpener:
-        def open(self, request, timeout):
-            opened.append(request)
-            return object()
-
-    remote.opener = FakeOpener()
     with pytest.raises(ValueError, match='origin'):
         remote.request('https://other.example/library/video.mkv')
     assert opened == []
+
+
+def test_request_rejects_redirects():
+    class Response:
+        status_code = 302
+
+        def close(self):
+            pass
+
+    class FakeSession:
+        def request(self, method, url, **kwargs):
+            return Response()
+
+    remote = webscanner.WebDirectory(
+        'https://media.example/library/',
+        request_session=FakeSession(),
+    )
+    with pytest.raises(ValueError, match='redirects'):
+        remote.request('https://media.example/library/video.mkv')
 
 
 def test_listing_discovers_files_and_directories_and_ignores_escaped_links(monkeypatch):
     remote = webscanner.WebDirectory('https://media.example/library/')
 
     class Response:
-        headers = Message()
+        headers = {'Content-Type': 'text/html; charset=utf-8'}
+        encoding = 'utf-8'
 
         def __enter__(self):
             return self
@@ -79,13 +112,12 @@ def test_listing_discovers_files_and_directories_and_ignores_escaped_links(monke
         def __exit__(self, *_args):
             return False
 
-        def read(self):
-            return (
-                b'<a href="video.mkv">video</a>'
-                b'<a href="nested/">nested</a>'
-                b'<a href="../private.txt">private</a>'
-                b'<a href="https://other.example/video.mkv">external</a>'
-            )
+        content = (
+            b'<a href="video.mkv">video</a>'
+            b'<a href="nested/">nested</a>'
+            b'<a href="../private.txt">private</a>'
+            b'<a href="https://other.example/video.mkv">external</a>'
+        )
 
     monkeypatch.setattr(remote, 'request', lambda url: Response())
 
@@ -121,7 +153,8 @@ def test_acquire_downloads_files_and_saves_state(tmp_path, monkeypatch):
     class FakeWebDirectory:
         url = 'https://media.example/library/'
 
-        def __init__(self, url, username='', password=''):
+        def __init__(self, url, username='', password='', request_session=None):
+            assert request_session is None
             assert url == self.url
             assert username == 'user'
             assert password == 'pass'
@@ -159,17 +192,11 @@ def test_download_does_not_send_stale_validators_for_missing_local_file(tmp_path
     captured = {}
 
     class Response:
+        status_code = 200
         headers = {'ETag': 'new', 'Last-Modified': 'today', 'Content-Length': '5'}
 
-        def __init__(self):
-            self.data = b'video'
-
-        def read(self, size=-1):
-            result, self.data = self.data, b''
-            return result
-
-        def getcode(self):
-            return 200
+        def iter_content(self, chunk_size):
+            return iter([b'video', b''])
 
         def close(self):
             pass
@@ -201,7 +228,7 @@ def test_acquire_rejects_symlinked_destination_parent_without_writing_outside(tm
     class FakeWebDirectory:
         url = 'https://media.example/library/'
 
-        def __init__(self, url, username='', password=''):
+        def __init__(self, url, username='', password='', request_session=None):
             pass
 
         def files(self):

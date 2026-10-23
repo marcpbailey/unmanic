@@ -2235,9 +2235,14 @@
                             "enable_web_scanner": false,
                             "web_url": "",
                             "web_username": "",
+                            "web_password_set": false,
+                            "web_connection_id": "5aaec515-53b1-4e7b-8448-12f2976e8c98",
+                            "web_write_url": "",
+                            "web_write_username": "",
+                            "web_write_password_set": false,
+                            "web_write_credentials_same_as_read": true,
                             "priority_score": 0,
-                            "tags": [],
-                            "web_password_set": false
+                            "tags": []
                         },
                         "additionalProperties": {}
                     },
@@ -2318,6 +2323,9 @@
                             "enable_web_scanner": false,
                             "web_url": "",
                             "web_username": "",
+                            "web_write_url": "",
+                            "web_write_username": "",
+                            "web_write_credentials_same_as_read": true,
                             "priority_score": 0,
                             "tags": []
                         },
