@@ -372,9 +372,11 @@ class Library(object):
     def get_web_connection_id(self):
         if not self.model.web_connection_id:
             with _web_connection_id_lock:
-                if not self.model.web_connection_id:
-                    self.model.web_connection_id = str(uuid.uuid4())
-                    self.model.save(only=[Libraries.web_connection_id])
+                candidate = str(uuid.uuid4())
+                (Libraries.update(web_connection_id=candidate)
+                 .where((Libraries.id == self.model.id) & (Libraries.web_connection_id == ''))
+                 .execute())
+                self.model.web_connection_id = Libraries.get_by_id(self.model.id).web_connection_id
         return self.model.web_connection_id
 
     def get_priority_score(self):

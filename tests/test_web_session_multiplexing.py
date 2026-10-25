@@ -98,3 +98,21 @@ def test_sessions_are_isolated_between_libraries(monkeypatch):
     assert first["session"] is not second["session"]
     assert first["session"].auth == ("first-reader", "first-secret")
     assert second["session"].auth == ("second-reader", "second-secret")
+
+
+def test_connection_id_is_stable_across_stale_library_instances():
+    from peewee import SqliteDatabase
+    from unmanic.libs.library import Library
+    from unmanic.libs.unmodels.libraries import Libraries
+
+    database = SqliteDatabase(":memory:")
+    with database.bind_ctx([Libraries], bind_refs=False, bind_backrefs=False):
+        database.create_tables([Libraries])
+        row = Libraries.create(name="Source", path="/library/source")
+        first = SimpleNamespace(model=Libraries.get_by_id(row.id))
+        second = SimpleNamespace(model=Libraries.get_by_id(row.id))
+        first_id = Library.get_web_connection_id(first)
+        second_id = Library.get_web_connection_id(second)
+        assert first_id == second_id
+        assert Libraries.get_by_id(row.id).web_connection_id == first_id
+    database.close()
