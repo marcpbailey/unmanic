@@ -245,6 +245,8 @@ def acquire(url, destination, state_path, username='', password='', request_sess
         password=password,
         request_session=request_session,
     )
+    # Empty remote collections still need a local directory for scan-complete events.
+    Path(destination).mkdir(parents=True, exist_ok=True)
     previous_files = _load_state(state_path, remote.url)
     current_files = {}
     changed_count = 0

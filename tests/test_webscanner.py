@@ -242,3 +242,11 @@ def test_acquire_rejects_symlinked_destination_parent_without_writing_outside(tm
             tmp_path / 'config' / 'state.json',
         )
     assert not (outside / 'new').exists()
+
+
+def test_empty_web_directory_creates_local_cache_for_scan_completion(tmp_path, monkeypatch):
+    destination = tmp_path / 'missing-cache'
+    monkeypatch.setattr(webscanner.WebDirectory, 'files', lambda self: [])
+    changed = webscanner.acquire('https://media.example/library/', destination, tmp_path / 'state.json')
+    assert changed == 0
+    assert destination.is_dir()
