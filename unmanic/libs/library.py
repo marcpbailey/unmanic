@@ -137,7 +137,7 @@ class Library(object):
                 'enable_remote_only': lib.enable_remote_only,
                 'enable_scanner':     lib.enable_scanner,
                 'enable_inotify':     lib.enable_inotify,
-                'wait_for_library_ids': json.loads(lib.wait_for_library_ids),
+                'wait_for_library_ids': json.loads(lib.wait_for_library_ids or '[]'),
                 'tags':               [],
             }
             # Append tags
@@ -317,7 +317,7 @@ class Library(object):
         self.model.enable_inotify = value
 
     def get_wait_for_library_ids(self):
-        return json.loads(self.model.wait_for_library_ids)
+        return json.loads(self.model.wait_for_library_ids or '[]')
 
     @staticmethod
     def validate_wait_for_library_ids(library_id, values):

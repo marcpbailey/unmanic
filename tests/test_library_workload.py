@@ -379,5 +379,21 @@ def test_existing_library_database_receives_empty_dependency_default(tmp_path):
         migrations.database.close()
         db.initialize(previous)
     with sqlite3.connect(path) as connection:
-        assert connection.execute('SELECT name, path, wait_for_library_ids FROM libraries').fetchall() == [
-            ('Existing', '/existing', '[]')]
+        assert connection.execute('SELECT name, path FROM libraries').fetchall() == [
+            ('Existing', '/existing')]
+        # An older backend writes its known fields and ignores the new column.
+        fields = [field for field in Libraries._meta.sorted_fields if field.name != 'wait_for_library_ids']
+        values = {'id': 2, 'name': 'Older client', 'path': '/older'}
+        for field in fields:
+            if field.name not in values:
+                values[field.name] = field.default() if callable(field.default) else field.default
+        columns = ','.join(field.column_name for field in fields)
+        parameters = ','.join('?' for field in fields)
+        connection.execute('INSERT INTO libraries (' + columns + ') VALUES (' + parameters + ')',
+                           [values[field.name] for field in fields])
+        connection.commit()
+    from unmanic.libs.library import Library
+    with Libraries.bind_ctx(migrations.database):
+        assert Library(1).get_wait_for_library_ids() == []
+        assert Library(2).get_wait_for_library_ids() == []
+    migrations.database.close()
