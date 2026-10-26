@@ -144,7 +144,7 @@ class Library(object):
                 'enable_scanner':     lib.enable_scanner,
                 'enable_inotify':     lib.enable_inotify,
                 'enable_web_scanner': lib.enable_web_scanner,
-                'wait_for_library_ids': json.loads(lib.wait_for_library_ids),
+                'wait_for_library_ids': json.loads(lib.wait_for_library_ids or '[]'),
                 'tags':               [],
             }
             # Append tags
@@ -388,7 +388,7 @@ class Library(object):
         return self.model.web_connection_id
 
     def get_wait_for_library_ids(self):
-        return json.loads(self.model.wait_for_library_ids)
+        return json.loads(self.model.wait_for_library_ids or '[]')
 
     @staticmethod
     def validate_wait_for_library_ids(library_id, values):

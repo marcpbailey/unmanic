@@ -55,7 +55,7 @@ class Libraries(BaseModel):
     web_write_username = TextField(null=False, default='')
     web_write_password = TextField(null=False, default='')
     web_write_credentials_same_as_read = BooleanField(null=False, default=True)
-    wait_for_library_ids = TextField(null=False, default='[]')
+    wait_for_library_ids = TextField(null=True, default='[]')
     priority_score = BigIntegerField(null=False, default=0)
     # ManyToMany Linking field. Does not create a column in the DB. See linking table below
     tags = ManyToManyField(Tags, backref='tags')

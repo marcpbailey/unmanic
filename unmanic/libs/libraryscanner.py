@@ -341,6 +341,7 @@ class LibraryScannerManager(threading.Thread):
             self.current_library_path = library_path
 
     def run_scheduled_scan(self):
+        self.scanned_library_ids = []
         if not self.system_configuration_is_valid():
             self.logger.warning("Skipping library scanner due invalid system configuration.")
             return
