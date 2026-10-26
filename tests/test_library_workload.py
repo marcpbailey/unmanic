@@ -397,3 +397,15 @@ def test_existing_library_database_receives_empty_dependency_default(tmp_path):
         assert Library(1).get_wait_for_library_ids() == []
         assert Library(2).get_wait_for_library_ids() == []
     migrations.database.close()
+
+
+def test_plugin_library_selector_preserves_id_list_in_config_form(monkeypatch):
+    from unmanic.libs.session import Session
+    from unmanic.webserver.helpers import plugins as plugin_settings
+    monkeypatch.setattr(Session, 'register_unmanic', lambda self: None)
+    monkeypatch.setattr(plugin_settings, 'PluginExecutor', lambda: SimpleNamespace(
+        get_plugin_settings=lambda *args, **kwargs: ({'targets': [2]}, {
+            'targets': {'input_type': 'library_select', 'label': 'Libraries to scan'}})))
+    form = plugin_settings.get_plugin_settings('completion', library_id=1)
+    assert form[0]['input_type'] == 'library_select'
+    assert form[0]['value'] == [2]
