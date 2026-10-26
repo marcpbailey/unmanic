@@ -636,6 +636,20 @@ class RequestNotificationsDataSchema(BaseSchema):
 # PENDING
 # =======
 
+class RequestLibraryWorkloadSchema(BaseSchema):
+    library_ids = fields.List(
+        fields.Int(strict=True, validate=validate.Range(min=1)),
+        load_default=list,
+        description='Library IDs to observe; omit or pass [] for all configured Libraries.',
+    )
+
+
+class LibraryWorkloadSchema(BaseSchema):
+    scan_state = fields.Str(required=True)
+    idle = fields.Boolean(required=True)
+    libraries = fields.List(fields.Dict(), required=True)
+
+
 class RequestPendingTableDataSchema(RequestTableDataSchema):
     """Schema for requesting pending tasks from the table"""
 
