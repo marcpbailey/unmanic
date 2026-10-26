@@ -71,6 +71,7 @@ class LibraryScannerManager(threading.Thread):
         self.scanned_library_ids = []
         self.completed_scan_library_ids = set()
         self.scan_active = False
+        self.completion_progress = None
         self.current_library_id = None
         self.current_library_name = None
         self.current_library_path = None
@@ -186,16 +187,28 @@ class LibraryScannerManager(threading.Thread):
     def get_scan_status(self):
         with self.scan_state_lock:
             state = self.scan_state
+            completion = getattr(self, 'completion_progress', None)
+            if completion is not None:
+                completion = dict(completion, elapsed_seconds=int(time.monotonic() - self.completion_started))
             return {
                 "state":                state,
+                "completion":           completion,
                 "current_library_id":   self.current_library_id,
                 "current_library_name": self.current_library_name,
                 "current_library_path": self.current_library_path,
-                "can_rescan":           state == 'idle',
-                "can_pause":            state in ('scheduled', 'scanning'),
-                "can_resume":           state == 'paused',
-                "can_cancel":           state in ('scheduled', 'scanning', 'paused', 'cancelling'),
+                "can_rescan":           state == 'idle' and completion is None,
+                "can_pause":            state in ('scheduled', 'scanning') and completion is None,
+                "can_resume":           state == 'paused' and completion is None,
+                "can_cancel":           state in ('scheduled', 'scanning', 'paused', 'cancelling') and completion is None,
             }
+
+    def report_completion_progress(self, message=None, current=None, total=None, unit=None, plugin_name=None):
+        with self.scan_state_lock:
+            if self.completion_progress is None:
+                return
+            if plugin_name is not None:
+                self.completion_progress['plugin_name'] = plugin_name
+            self.completion_progress.update(message=message, current=current, total=total, unit=unit)
 
     def request_scan(self, library_ids=None):
         selected = None
@@ -303,11 +316,18 @@ class LibraryScannerManager(threading.Thread):
                 self.current_library_path = None
 
             try:
+                with self.scan_state_lock:
+                    self.completion_started = time.monotonic()
+                    self.completion_progress = {'plugin_name': None, 'message': None,
+                                                'current': None, 'total': None, 'unit': None}
                 from unmanic.libs.library_workload import notify_library_workload_idle
                 notify_library_workload_idle(scanner=self, reason='scan_cancelled' if cancelled else 'scan_complete',
                                              scanned_library_ids=scanned)
             except Exception:
                 self.logger.exception('Unable to notify plugins of idle Library workload')
+            finally:
+                with self.scan_state_lock:
+                    self.completion_progress = None
 
     @staticmethod
     def clear_queue(target_queue):

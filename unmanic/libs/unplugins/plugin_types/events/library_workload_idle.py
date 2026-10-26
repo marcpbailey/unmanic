@@ -24,6 +24,8 @@ class LibraryWorkloadIdle(PluginType):
     can repeat and are not a guarantee of successful processing or future idleness.
     For scan_complete, scanned_library_ids identifies Libraries attempted in the
     scan pass. Query the required Library set again before starting dependent work.
+    Scan-completion notifications may include report_progress(message, current,
+    total, unit). Call it during long completion actions to keep scan status visible.
     """
     data_schema = {
         'library_ids': {'required': True, 'type': list},

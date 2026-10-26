@@ -978,5 +978,8 @@ class PluginsHandler(metaclass=SingletonType):
         """
         plugin_modules = self.get_enabled_plugin_modules_by_type(plugin_type)
         for plugin_module in plugin_modules:
+            report_progress = data.get('report_progress')
+            if callable(report_progress):
+                report_progress(plugin_name=plugin_module.get('name', plugin_module.get('plugin_id')))
             if not self.exec_plugin_runner(data, plugin_module.get("plugin_id"), plugin_type):
                 continue

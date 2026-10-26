@@ -66,4 +66,6 @@ def notify_library_workload_idle(library_ids=None, scanner=None, reason='task_co
     data = {'library_ids': idle, 'reason': reason, 'workload': workload}
     if scanned_library_ids is not None:
         data['scanned_library_ids'] = scanned_library_ids
+    if reason == 'scan_complete' and hasattr(scanner, 'report_completion_progress'):
+        data['report_progress'] = scanner.report_completion_progress
     PluginsHandler().run_event_plugins_for_plugin_type('events.library_workload_idle', data)

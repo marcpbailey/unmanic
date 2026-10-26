@@ -247,6 +247,7 @@ class PluginChildProcess:
                      pull from prog_q -> call parser(...)
         """
         exit_ok = False
+        exited = False
         parser = self.data.get('command_progress_parser')
 
         while True:
@@ -262,18 +263,29 @@ class PluginChildProcess:
             try:
                 while True:
                     pct = self._prog_q.get_nowait()
+                    scope = None
+                    if isinstance(pct, dict):
+                        if pct.get('message'):
+                            self._set_current_command(pct['message'])
+                        scope = pct.get('scope')
+                        pct = pct.get('percent')
                     if callable(parser):
-                        parser(str(pct))
+                        options = {'scope': scope} if scope is not None else {}
+                        parser('' if pct is None else str(pct), **options)
             except queue.Empty:
                 pass
 
             # 3) if the child exited, we’re done. Unset parser PID
-            if self._proc is not None and not self._proc.is_alive():
-                exit_ok = (self._proc.exitcode == 0)
+            if exited:
                 if callable(parser):
                     # tell parser to unset its internal proc state
                     parser(None, unset=True)
                 break
+            if self._proc is not None and not self._proc.is_alive():
+                exit_ok = (self._proc.exitcode == 0)
+                # Drain once more after exit so final logs/progress are retained.
+                exited = True
+                continue
 
             # Add a short wait here to prevent CPU pinning
             time.sleep(0.1)
