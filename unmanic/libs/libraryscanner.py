@@ -267,6 +267,12 @@ class LibraryScannerManager(threading.Thread):
                 self.current_library_name = None
                 self.current_library_path = None
 
+            try:
+                from unmanic.libs.library_workload import notify_library_workload_idle
+                notify_library_workload_idle(scanner=self, reason='scan_complete')
+            except Exception:
+                self.logger.exception('Unable to notify plugins of idle Library workload')
+
     @staticmethod
     def clear_queue(target_queue):
         while True:

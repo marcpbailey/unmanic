@@ -39,7 +39,8 @@ from unmanic.webserver.api_v2.base_api_handler import BaseApiHandler, BaseApiErr
 from unmanic.webserver.api_v2.schema.schemas import PendingTasksTableResultsSchema, RequestPendingTaskCreateSchema, \
     RequestPendingTasksLibraryUpdateSchema, RequestPendingTasksReorderSchema, PendingTasksSchema, \
     RequestPendingTableDataSchema, RequestPendingTasksBulkActionSchema, TaskDownloadLinkSchema, \
-    RequestPendingTaskTestSchema, PendingTaskTestResultSchema, RequestTableUpdateByIdList, LibraryScanStatusSchema
+    RequestPendingTaskTestSchema, PendingTaskTestResultSchema, RequestTableUpdateByIdList, LibraryScanStatusSchema, \
+    RequestLibraryWorkloadSchema, LibraryWorkloadSchema
 from unmanic.webserver.downloads import DownloadsLinks
 from unmanic.webserver.helpers import pending_tasks
 
@@ -51,6 +52,11 @@ class ApiPendingHandler(BaseApiHandler):
     unmanic_data_queues = None
 
     routes = [
+        {
+            "path_pattern": r"/pending/library/workload",
+            "supported_methods": ["POST"],
+            "call_method": "get_library_workload",
+        },
         {
             "path_pattern":      r"/pending/tasks",
             "supported_methods": ["POST"],
@@ -140,6 +146,39 @@ class ApiPendingHandler(BaseApiHandler):
         if self.library_scanner is None:
             raise RuntimeError("Library scanner is unavailable")
         return self.library_scanner.get_scan_status()
+
+    async def get_library_workload(self):
+        """
+        Library workload status
+        ---
+        description: Observe scan state and all outstanding task stages for selected Libraries.
+        requestBody:
+            required: True
+            content:
+                application/json:
+                    schema:
+                        RequestLibraryWorkloadSchema
+        responses:
+            200:
+                description: Current workload; idle does not imply successful processing.
+                content:
+                    application/json:
+                        schema:
+                            LibraryWorkloadSchema
+        """
+        try:
+            from unmanic.libs.library_workload import get_library_workload
+            request = self.read_json_request(RequestLibraryWorkloadSchema())
+            workload = get_library_workload(request['library_ids'], self.library_scanner)
+            self.write(workload)
+        except BaseApiError:
+            return
+        except ValueError as error:
+            self.set_status(self.STATUS_ERROR_EXTERNAL, reason=str(error))
+            self.write_error()
+        except Exception as error:
+            self.set_status(self.STATUS_ERROR_INTERNAL, reason=str(error))
+            self.write_error()
 
     async def get_pending_tasks(self):
         """
