@@ -54,9 +54,9 @@ transitive dependencies. Select processing Libraries as well as any intake
 Library that submits work to them. The query still conservatively waits for the
 whole scanner to return to idle when dependencies are selected.
 
-A plugin can request the existing whole scan loop with `POST /pending/rescan`.
-That API has no target Library parameter. A downstream scan trigger should avoid
-retriggering indefinitely on empty scan completion.
+A plugin can request the whole scan loop or selected Libraries with
+`POST /pending/rescan`, as described below. A downstream scan trigger should
+avoid retriggering indefinitely on empty scan completion.
 
 
 ## Targeted scan requests
@@ -80,3 +80,16 @@ manual cancellation. Task-completion events retain their original payload.
 A plugin can use an idle notification to request a targeted downstream scan,
 then query its dependencies before doing the downstream work. Do not start
 another scan in response to that same target's empty-scan completion.
+
+
+## Library selectors in plugin settings
+
+Plugins can declare a setting with `input_type: "library_select"` and a default
+value of `[]`. The settings editor uses the same named multi-select component
+and current Library list as **Wait for Libraries**, excluding the current
+Library. Values are lists of native Library IDs, so names can change without
+changing selections. No per-Library checkbox definitions are needed.
+
+The selector lists all other Libraries. A plugin requesting scans must account
+for the targeted scan API respecting scanner enablement and API-only settings.
+Plugins remain responsible for validating and interpreting their saved lists.
