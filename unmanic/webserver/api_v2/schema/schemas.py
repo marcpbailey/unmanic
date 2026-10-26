@@ -636,6 +636,14 @@ class RequestNotificationsDataSchema(BaseSchema):
 # PENDING
 # =======
 
+class RequestLibraryScanSchema(BaseSchema):
+    library_ids = fields.List(
+        fields.Int(strict=True, validate=validate.Range(min=1)),
+        load_default=None, allow_none=False, validate=validate.Length(min=1),
+        description='Scan only these Libraries. Omit for a full scan pass.',
+    )
+
+
 class RequestLibraryWorkloadSchema(BaseSchema):
     library_ids = fields.List(
         fields.Int(strict=True, validate=validate.Range(min=1)),
@@ -1679,6 +1687,11 @@ class LibraryResultsSchema(BaseSchema):
         required=True,
         description="If the library is configured to scan a web directory",
         example=False,
+    )
+    wait_for_library_ids = fields.List(
+        fields.Int(strict=True, validate=validate.Range(min=1)),
+        required=False,
+        description='Libraries selected for completion-dependent plugins; [] disables dependency waiting.',
     )
     tags = fields.List(
         cls_or_instance=fields.Str,

@@ -40,7 +40,7 @@ from unmanic.webserver.api_v2.schema.schemas import PendingTasksTableResultsSche
     RequestPendingTasksLibraryUpdateSchema, RequestPendingTasksReorderSchema, PendingTasksSchema, \
     RequestPendingTableDataSchema, RequestPendingTasksBulkActionSchema, TaskDownloadLinkSchema, \
     RequestPendingTaskTestSchema, PendingTaskTestResultSchema, RequestTableUpdateByIdList, LibraryScanStatusSchema, \
-    RequestLibraryWorkloadSchema, LibraryWorkloadSchema
+    RequestLibraryWorkloadSchema, LibraryWorkloadSchema, RequestLibraryScanSchema
 from unmanic.webserver.downloads import DownloadsLinks
 from unmanic.webserver.helpers import pending_tasks
 
@@ -336,7 +336,13 @@ class ApiPendingHandler(BaseApiHandler):
         """
         Pending - trigger a library scan
         ---
-        description: Triggers a library scan.
+        description: Scan selected Libraries, or all enabled scanner Libraries when IDs are omitted.
+        requestBody:
+            required: False
+            content:
+                application/json:
+                    schema:
+                        RequestLibraryScanSchema
         responses:
             200:
                 description: 'Successful request; Returns success status'
@@ -375,7 +381,10 @@ class ApiPendingHandler(BaseApiHandler):
                 self.write_error()
                 return
 
-            if not self.library_scanner.request_scan():
+            library_ids = None
+            if self.request.body:
+                library_ids = self.read_json_request(RequestLibraryScanSchema())['library_ids']
+            if not self.library_scanner.request_scan(library_ids=library_ids):
                 self.set_status(self.STATUS_ERROR_EXTERNAL, reason="A library scan is already scheduled or running")
                 self.write_error()
                 return
@@ -385,6 +394,9 @@ class ApiPendingHandler(BaseApiHandler):
         except BaseApiError as bae:
             tornado.log.app_log.error("BaseApiError.{}: {}".format(self.route.get('call_method'), str(bae)))
             return
+        except ValueError as e:
+            self.set_status(self.STATUS_ERROR_EXTERNAL, reason=str(e))
+            self.write_error()
         except Exception as e:
             self.set_status(self.STATUS_ERROR_INTERNAL, reason=str(e))
             self.write_error()

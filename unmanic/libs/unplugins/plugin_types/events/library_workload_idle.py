@@ -19,15 +19,17 @@ class LibraryWorkloadIdle(PluginType):
     Observe idle Libraries after a complete scan pass or task cleanup.
 
     library_ids contains the observed idle Library IDs. reason identifies
-    scan_complete or task_complete. workload contains scan_state and per-Library
+    scan_complete, scan_cancelled or task_complete. workload contains scan_state and per-Library
     counts of creating, pending, in_progress and processed tasks. Notifications
     can repeat and are not a guarantee of successful processing or future idleness.
-    Query the required Library set again before starting dependent work.
+    For scan_complete, scanned_library_ids identifies Libraries attempted in the
+    scan pass. Query the required Library set again before starting dependent work.
     """
     data_schema = {
         'library_ids': {'required': True, 'type': list},
         'reason': {'required': True, 'type': str},
         'workload': {'required': True, 'type': dict},
+        'scanned_library_ids': {'required': False, 'type': list},
     }
     test_data = {
         'library_ids': [1], 'reason': 'scan_complete',

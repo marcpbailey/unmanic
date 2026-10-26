@@ -52,7 +52,7 @@ def get_library_workload(library_ids=None, scanner=None):
             'idle': scan_state == 'idle' and all(item['idle'] for item in libraries)}
 
 
-def notify_library_workload_idle(library_ids=None, scanner=None, reason='task_complete'):
+def notify_library_workload_idle(library_ids=None, scanner=None, reason='task_complete', scanned_library_ids=None):
     """Notify plugins after cleanup or a full scan pass, when Libraries are idle.
 
     Notifications are observations and may repeat. Consumers can query a wider
@@ -63,6 +63,7 @@ def notify_library_workload_idle(library_ids=None, scanner=None, reason='task_co
     if not idle:
         return
     from unmanic.libs.plugins import PluginsHandler
-    PluginsHandler().run_event_plugins_for_plugin_type('events.library_workload_idle', {
-        'library_ids': idle, 'reason': reason, 'workload': workload,
-    })
+    data = {'library_ids': idle, 'reason': reason, 'workload': workload}
+    if scanned_library_ids is not None:
+        data['scanned_library_ids'] = scanned_library_ids
+    PluginsHandler().run_event_plugins_for_plugin_type('events.library_workload_idle', data)

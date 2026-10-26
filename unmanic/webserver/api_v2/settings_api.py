@@ -34,7 +34,7 @@ import tornado.log
 
 from unmanic import config
 from unmanic.libs.installation_link import Links
-from unmanic.libs.library import Library
+from unmanic.libs.library import Library, LibraryDependencyError
 from unmanic.libs.uiserver import UnmanicDataQueues
 from unmanic.libs.worker_group import WorkerGroup
 from unmanic.webserver.api_v2.base_api_handler import BaseApiError, BaseApiHandler
@@ -979,6 +979,7 @@ class ApiSettingsHandler(BaseApiHandler):
                     "web_write_password_set": False,
                     "web_write_credentials_same_as_read": True,
                     "priority_score":     0,
+                    "wait_for_library_ids": [],
                 },
                 "plugins":        {
                     "enabled_plugins": [],
@@ -1071,6 +1072,9 @@ class ApiSettingsHandler(BaseApiHandler):
         except BaseApiError as bae:
             tornado.log.app_log.error("BaseApiError.{}: {}".format(self.route.get('call_method'), str(bae)))
             return
+        except LibraryDependencyError as e:
+            self.set_status(self.STATUS_ERROR_EXTERNAL, reason=str(e))
+            self.write_error()
         except Exception as e:
             self.set_status(self.STATUS_ERROR_INTERNAL, reason=str(e))
             self.write_error()
