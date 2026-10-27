@@ -73,8 +73,7 @@ class WorkerSubprocessMonitor(threading.Thread):
         self._pause_time_counter = None
 
         # Subprocess stats
-        self.subprocess_percent = None
-        self.progress_scope = 'task'
+        self.subprocess_percent = 0
         self.subprocess_elapsed = 0
         self.subprocess_cpu_percent = 0
         self.subprocess_mem_percent = 0
@@ -91,8 +90,7 @@ class WorkerSubprocessMonitor(threading.Thread):
                 self.subprocess_start_time = time.time()
                 self.subprocess_pause_time = 0
                 # Reset subprocess progress
-                self.subprocess_percent = None
-                self.progress_scope = 'task'
+                self.subprocess_percent = 0
                 self.subprocess_elapsed = 0
             if self.redundant_flag.is_set():
                 # If the redundant flag is set then we should terminate any set procs straight away as the worker needs to stop
@@ -111,8 +109,7 @@ class WorkerSubprocessMonitor(threading.Thread):
             self.subprocess = None
             self._tracked_processes_by_pid = {}
             # Reset subprocess progress
-            self.subprocess_percent = None
-            self.progress_scope = 'task'
+            self.subprocess_percent = 0
             self.subprocess_elapsed = 0
             # Reset resource values
             self.set_proc_resources_in_parent_worker(0, 0, 0, 0)
@@ -299,7 +296,7 @@ class WorkerSubprocessMonitor(threading.Thread):
             subprocess_elapsed = 0
             if self.subprocess is not None:
                 # Get the time now
-                now = time.time()
+                now = int(time.time())
                 # Get the total running time (including time being paused)
                 total_run_time = int(now - self.subprocess_start_time)
                 # Get the time when we started being paused
@@ -314,8 +311,7 @@ class WorkerSubprocessMonitor(threading.Thread):
         try:
             return {
                 "pid":         str(self.subprocess_pid),
-                "percent":     '' if self.subprocess_percent is None else str(self.subprocess_percent),
-                "progress_scope": self.progress_scope,
+                "percent":     str(self.subprocess_percent),
                 "elapsed":     self.get_subprocess_elapsed(),
                 "cpu_percent": str(self.subprocess_cpu_percent),
                 "mem_percent": str(self.subprocess_mem_percent),
@@ -347,38 +343,37 @@ class WorkerSubprocessMonitor(threading.Thread):
         except Exception:
             self.logger.exception("Exception in set_subprocess_percent()")
 
-    def default_progress_parser(self, line_text, pid=None, proc_start_time=None, unset=False, scope=None):
+    def default_progress_parser(self, line_text, pid=None, proc_start_time=None, unset=False):
         if unset:
             # Here we provide a plugin with the ability to unset a subprocess (indicating that it completed)
             self.unset_proc()
             return {
                 "killed":  self.redundant_flag.is_set(),
                 "paused":  self.paused,
-                "percent": '' if self.subprocess_percent is None else str(self.subprocess_percent),
+                "percent": str(self.subprocess_percent),
             }
         try:
-            if scope is not None:
-                self.progress_scope = scope
             if pid is not None:
                 self.set_proc(pid)
             if proc_start_time is not None:
                 self.set_subprocess_start_time(proc_start_time)
             try:
                 stripped_text = str(line_text).strip()
-                self.subprocess_percent = int(float(stripped_text)) if stripped_text else None
+                text_float = float(stripped_text)
+                self.subprocess_percent = int(text_float)
             except (TypeError, ValueError):
                 pass
             return {
                 "killed":  self.redundant_flag.is_set(),
                 "paused":  self.paused,
-                "percent": '' if self.subprocess_percent is None else str(self.subprocess_percent),
+                "percent": str(self.subprocess_percent),
             }
         except Exception:
             self.logger.exception("Exception in default_progress_parser()")
             return {
                 "killed":  self.redundant_flag.is_set(),
                 "paused":  self.paused,
-                "percent": '' if self.subprocess_percent is None else str(self.subprocess_percent),
+                "percent": str(self.subprocess_percent),
             }
 
     def run(self):

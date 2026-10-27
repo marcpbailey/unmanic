@@ -787,10 +787,6 @@ class PendingTasksSchema(TableRecordsSuccessSchema):
 class LibraryScanStatusSchema(BaseSchema):
     """Schema for returning the current library scan state"""
 
-    completion = fields.Dict(
-        required=False, allow_none=True,
-        description="Active scan-completion action: plugin_name, message, current, total, unit and elapsed_seconds",
-    )
     state = fields.Str(
         required=True,
         description="The current library scan state",

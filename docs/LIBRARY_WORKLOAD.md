@@ -1,25 +1,5 @@
 # Library workload query and idle notification
 
-## Reporting scan-completion work
-
-`GET /pending/rescan/status` includes `completion` while scan-completion actions
-run. It contains the active `plugin_name`, optional `message`, `current`, `total`
-and `unit`, and `elapsed_seconds`. The frontend keeps this work visible and hides
-scan controls until it finishes. The internal scanner `state` remains available
-to workload queries, so completion actions do not block their own idle checks.
-
-Scan-completion event data provides an optional `report_progress` callback.
-Call `data['report_progress'](message='Checking files', current=2, total=8,
-unit='files')` during long work. Omit counts for an indeterminate phase. The
-completion display is cleared even if an action fails. This reports activity,
-not processing success.
-
-Python worker plugins can use `PluginChildProcess` to register their process and
-stream logs and progress. Its progress queue accepts numbers or dictionaries
-containing `message`, `percent` and optional `scope='phase'`. A null percentage
-is indeterminate; a measured zero remains zero. Phase percentages do not estimate
-whole-task completion time. Send 100 only when the task's outputs are complete.
-
 Use this query to decide when to update an aggregate media index, refresh a
 catalogue, or perform another action after Library work has drained.
 

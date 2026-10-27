@@ -109,10 +109,6 @@ class ProcessItem(PluginType):
             # need to consume it.
             data["file_in"] = repaired_cache_path
 
-    Progress queues also accept dictionaries with `message`, `percent` and
-    optional `scope` ("task" or "phase"). `percent=None` reports unknown progress.
-    Phase percentages describe the current operation and do not estimate whole-task completion time.
-
     In this mode the `PluginChildProcess` helper:
       1. Spawns the child via `multiprocessing.Process`.  
       2. Calls your target with `target(*args, **kwargs)` after injecting `log_queue` and `prog_queue` into the keyword arguments.  
