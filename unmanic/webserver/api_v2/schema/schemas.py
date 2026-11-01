@@ -367,6 +367,18 @@ class CompletedTasksLogRequestSchema(BaseSchema):
         description="The ID of the task",
         example=1,
     )
+    head = fields.Int(
+        required=False,
+        validate=validate.Range(min=0),
+        description="Head rows to be included in log",
+        example=10,
+    )
+    tail = fields.Int(
+        required=False,
+        validate=validate.Range(min=0),
+        description="Tail rows to be included in log",
+        example=10,
+    )
 
 
 class CompletedTasksLogSchema(BaseSchema):
@@ -1661,6 +1673,11 @@ class LibraryResultsSchema(BaseSchema):
         description="If the library is configured to monitor for file changes",
         example=False,
     )
+    enable_web_scanner = fields.Boolean(
+        required=True,
+        description="If the library is configured to scan a web directory",
+        example=False,
+    )
     tags = fields.List(
         cls_or_instance=fields.Str,
         required=True,
@@ -1703,6 +1720,15 @@ class SettingsLibraryConfigReadAndWriteSchema(BaseSchema):
             "path":           "/library",
             "enable_scanner": False,
             "enable_inotify": False,
+            "enable_web_scanner": False,
+            "web_url":        '',
+            "web_username":   '',
+            "web_password_set": False,
+            "web_connection_id": "5aaec515-53b1-4e7b-8448-12f2976e8c98",
+            "web_write_url": "",
+            "web_write_username": "",
+            "web_write_password_set": False,
+            "web_write_credentials_same_as_read": True,
             "priority_score": 0,
             "tags":           [],
         },
@@ -1777,6 +1803,12 @@ class SettingsLibraryPluginConfigExportSchema(BaseSchema):
             "path":           "/library",
             "enable_scanner": False,
             "enable_inotify": False,
+            "enable_web_scanner": False,
+            "web_url":        '',
+            "web_username":   '',
+            "web_write_url":  '',
+            "web_write_username": '',
+            "web_write_credentials_same_as_read": True,
             "priority_score": 0,
             "tags":           [],
         },
